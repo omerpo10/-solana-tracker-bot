@@ -1,13 +1,13 @@
-import requests
+import os
 import time
+import requests
 from collections import defaultdict
 
-# משתנים מהסביבה
-import os
+# קבלת משתני סביבה
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_USER_ID = os.getenv("TELEGRAM_USER_ID")
 
-# רשימת הארנקים למעקב
+# רשימת ארנקים למעקב
 WATCHED_ADDRESSES = [
     "215nhcAHjQQGgwpQSJQ7zR26etbjjtVdW74NLzwEgQjP",
     "681Cg1mvxyAinUA5R49gzFJKnGKmegSifsjodT71thB8",
@@ -15,7 +15,6 @@ WATCHED_ADDRESSES = [
     "DrD7EwkDy8z6ehw7uYSzFfASoBDSVdnHxMywvAyVTLYV"
 ]
 
-# API של Solana
 SOLANA_API = "https://api.mainnet-beta.solana.com"
 last_seen_tx = defaultdict(str)
 
@@ -26,13 +25,20 @@ def get_latest_tx(address):
         "method": "getSignaturesForAddress",
         "params": [address, {"limit": 1}]
     }
-    response = requests.post(SOLANA_API, json=payload)
-    result = response.json()
-    if 'result' in result and result['result']:
-        return result['result'][0]['signature']
+    try:
+        response = requests.post(SOLANA_API, json=payload, timeout=10)
+        response.raise_for_status()
+        result = response.json()
+        if 'result' in result and result['result']:
+            return result['result'][0]['signature']
+    except Exception as e:
+        print(f"⚠️ Error fetching tx for {address}: {e}")
     return None
 
 def send_telegram_message(message):
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_USER_ID:
+        print("❌ Missing Telegram configuration.")
+        return
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {
         "chat_id": TELEGRAM_USER_ID,
@@ -40,7 +46,9 @@ def send_telegram_message(message):
         "parse_mode": "HTML"
     }
     try:
-        requests.post(url, data=payload)
+        res = requests.post(url, data=payload)
+        if res.status_code != 200:
+            print(f"❌ Telegram error: {res.text}")
     except Exception as e:
         print(f"❌ Failed to send Telegram message: {e}")
 
@@ -60,5 +68,5 @@ if __name__ == "__main__":
         try:
             check_for_updates()
         except Exception as e:
-            print(f"⚠️ Error: {e}")
+            print(f"⚠️ Unexpected error: {e}")
         time.sleep(10)
