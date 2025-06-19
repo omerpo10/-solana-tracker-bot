@@ -1,27 +1,13 @@
-solana-watcher/
-├── solana_watcher.py       ← הקוד הראשי
-├── requirements.txt        ← ספריות דרושות
-├── render.yaml             ← הגדרות ל־Render
-requests
-services:
-  - type: web
-    name: solana-watcher
-    env: python
-    plan: free
-    buildCommand: ""
-    startCommand: python solana_watcher.py
-    envVars:
-      - key: TELEGRAM_BOT_TOKEN
-        value: 7877874608:AAEAK4rHLhUd-HIG0MvLpTQT_aWKS2tvgEA
-      - key: TELEGRAM_USER_ID
-        value: "@OmerPolak"
 import requests
 import time
 from collections import defaultdict
 
-TELEGRAM_BOT_TOKEN = "7877874608:AAEAK4rHLhUd-HIG0MvLpTQT_aWKS2tvgEA"
-TELEGRAM_USER_ID = "@OmerPolak"
+# משתנים מהסביבה
+import os
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_USER_ID = os.getenv("TELEGRAM_USER_ID")
 
+# רשימת הארנקים למעקב
 WATCHED_ADDRESSES = [
     "215nhcAHjQQGgwpQSJQ7zR26etbjjtVdW74NLzwEgQjP",
     "681Cg1mvxyAinUA5R49gzFJKnGKmegSifsjodT71thB8",
@@ -29,6 +15,7 @@ WATCHED_ADDRESSES = [
     "DrD7EwkDy8z6ehw7uYSzFfASoBDSVdnHxMywvAyVTLYV"
 ]
 
+# API של Solana
 SOLANA_API = "https://api.mainnet-beta.solana.com"
 last_seen_tx = defaultdict(str)
 
@@ -55,23 +42,23 @@ def send_telegram_message(message):
     try:
         requests.post(url, data=payload)
     except Exception as e:
-        print(f"â Failed to send Telegram message: {e}")
+        print(f"❌ Failed to send Telegram message: {e}")
 
 def check_for_updates():
     for address in WATCHED_ADDRESSES:
         latest_tx = get_latest_tx(address)
         if latest_tx and latest_tx != last_seen_tx[address]:
-            print(f"â New transaction for {address}: {latest_tx}")
+            print(f"✅ New transaction for {address}: {latest_tx}")
             last_seen_tx[address] = latest_tx
             tx_url = f"https://solscan.io/tx/{latest_tx}"
-            message = f"ð¥ <b>New transaction detected</b>\nð <a href='{tx_url}'>View on Solscan</a>\nð¦ Wallet: <code>{address}</code>"
+            message = f"📥 <b>New transaction detected</b>\n🔗 <a href='{tx_url}'>View on Solscan</a>\n🏦 Wallet: <code>{address}</code>"
             send_telegram_message(message)
 
 if __name__ == "__main__":
-    print("ð Solana wallet watcher with Telegram alerts is running...")
+    print("🚀 Solana wallet watcher with Telegram alerts is running...")
     while True:
         try:
             check_for_updates()
         except Exception as e:
-            print(f"â ï¸ Error: {e}")
+            print(f"⚠️ Error: {e}")
         time.sleep(10)
